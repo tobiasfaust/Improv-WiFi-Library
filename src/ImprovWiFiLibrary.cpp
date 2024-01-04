@@ -18,6 +18,25 @@ void ImprovWiFi::handleSerial()
   }
 }
 
+bool ImprovWiFi::handleBuffer(uint8_t *buffer, uint16_t bytes) {
+    bool res = false;    
+
+    if (_stopme > millis()) 
+	for (uint16_t i = 0; i < bytes; i++) {
+	    uint8_t b = buffer[i];
+	    
+	    if (parseImprovSerial(_position, b, _buffer)) {
+		_buffer[_position++] = b;
+		res = true;
+	    } else {
+		_position = 0;
+	    }
+	}
+    
+    return res;
+}
+
+
 void ImprovWiFi::onErrorCallback(ImprovTypes::Error err)
 {
   if (onImproErrorCallback)
@@ -203,24 +222,48 @@ bool ImprovWiFi::tryConnectToWifi(const char *ssid, const char *password)
 
 void ImprovWiFi::getAvailableWifiNetworks()
 {
-  int networkNum = WiFi.scanNetworks();
+  int networkNum = WiFi.scanNetworks(false, false); // Wait for scan result, hide hidden
 
-  for (int id = 0; id < networkNum; ++id)
-  {
-    std::vector<std::string> wifinetworks = {
-        WiFi.SSID(id).c_str(),
-        std::to_string(WiFi.RSSI(id)),
-        ( WiFi.encryptionType(id) == WIFI_OPEN ? "NO" : "YES")
-    };
+  if (networkNum) {
+      int indices[networkNum];
+      
+      // Sort RSSI - strongest first
+      for (uint32_t i = 0; i < networkNum; i++) { indices[i] = i; }
+      for (uint32_t i = 0; i < networkNum; i++) {
+          for (uint32_t j = i + 1; j < networkNum; j++) {
+	      if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])) {
+		  std::swap(indices[i], indices[j]);
+	      }
+          }
+      }
+      
+      // Remove duplicate SSIDs - IMPROV does not distinguish between channels so no need to keep them
+      for (uint32_t i = 0; i < networkNum; i++) {
+          if (-1 == indices[i]) { continue; }
+          String cssid = WiFi.SSID(indices[i]);
+          for (uint32_t j = i + 1; j < networkNum; j++) {
+	      if (cssid == WiFi.SSID(indices[j])) {
+		  indices[j] = -1; // Set dup aps to index -1
+	      }
+          }
+      }
+      
+  
+      // Send networks
+      for (uint32_t i = 0; i < networkNum; i++) {
+          if (-1 == indices[i]) { continue; }                  // Skip dups
+          String ssid_copy = WiFi.SSID(indices[i]);
+          if (!ssid_copy.length()) { ssid_copy = F("no_name"); }
 
-    std::vector<uint8_t> data = build_rpc_response(
-        ImprovTypes::GET_WIFI_NETWORKS, wifinetworks, false);
-    sendResponse(data);
-    delay(1);
+	  std::vector<std::string> wifinetworks = { ssid_copy.c_str(), std::to_string(WiFi.RSSI(indices[i])), ( WiFi.encryptionType(indices[i]) == WIFI_OPEN ? "NO" : "YES") };
+	  std::vector<uint8_t> data = build_rpc_response( ImprovTypes::GET_WIFI_NETWORKS, wifinetworks, false);
+	  sendResponse(data);
+	  delay(1);
+      }
   }
+
   // final response
-  std::vector<uint8_t> data =
-      build_rpc_response(ImprovTypes::GET_WIFI_NETWORKS, std::vector<std::string>{}, false);
+  std::vector<uint8_t> data =  build_rpc_response(ImprovTypes::GET_WIFI_NETWORKS, std::vector<std::string>{}, false);
   sendResponse(data);
 }
 
@@ -274,6 +317,8 @@ bool ImprovWiFi::parseImprovSerial(size_t position, uint8_t byte, const uint8_t 
       return false;
     }
 
+    _stopme = millis() + IMPROV_RUN_FOR;
+    
     if (type == ImprovTypes::ImprovSerialType::TYPE_RPC)
     {
       _position = 0;

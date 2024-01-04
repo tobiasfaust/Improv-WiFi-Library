@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef IMPROV_RUN_FOR
+#define IMPROV_RUN_FOR 60000
+#endif
+
 #if defined(ARDUINO_ARCH_ESP8266)
   #include <ESP8266WiFi.h>
   #define WIFI_OPEN ENC_TYPE_NONE
@@ -47,8 +51,9 @@ private:
   const char *const CHIP_FAMILY_DESC[5] = {"ESP32", "ESP32-C3", "ESP32-S2", "ESP32-S3", "ESP8266"};
   ImprovTypes::ImprovWiFiParamsStruct improvWiFiParams;
 
-  uint8_t _buffer[128];
-  uint8_t _position = 0;
+  uint8_t  _buffer[128];
+  uint8_t  _position = 0;
+  uint32_t _stopme   = 0;
 
   Stream *serial;
 
@@ -81,7 +86,8 @@ public:
    */
   ImprovWiFi(Stream *serial)
   {
-    this->serial = serial;
+    this->serial  = serial;
+    this->_stopme = millis() + IMPROV_RUN_FOR;
   }
 
   /**
@@ -112,6 +118,7 @@ public:
    *
    */
   void handleSerial();
+  bool handleBuffer(uint8_t *buffer, uint16_t bytes);
 
   /**
    * Set details of your device.
