@@ -224,6 +224,9 @@ void ImprovWiFi::getAvailableWifiNetworks()
 {
   int networkNum = WiFi.scanNetworks(false, false); // Wait for scan result, hide hidden
 
+  if (networkNum==0)
+      networkNum = WiFi.scanNetworks(false, false); 
+
   if (networkNum) {
       int indices[networkNum];
       
