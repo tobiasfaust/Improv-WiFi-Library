@@ -7,8 +7,8 @@ jobs:
         strategy:
             matrix:
                 example:
-                    - { path: examples\SimpleWebServer\SimpleWebServer.ino, board: esp32dev }
-                    - { path: examples\SimpleWebServerEsp8266\SimpleWebServerEsp8266.ino, board: nodemcuv2 }
+                    - { path: examples/SimpleWebServer/SimpleWebServer.ino, board: esp32dev }
+                    - { path: examples/SimpleWebServerEsp8266/SimpleWebServerEsp8266.ino, board: nodemcuv2 }
     
         runs-on: ubuntu-latest
 
