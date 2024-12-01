@@ -1,0 +1,31 @@
+name: PlatformIO CI
+
+on: [push, pull_request]
+
+jobs:
+    build:
+        strategy:
+            matrix:
+                example:
+                    - { path: examples\SimpleWebServer\SimpleWebServer.ino, board: esp32dev }
+                    - { path: examples\SimpleWebServerEsp8266\SimpleWebServerEsp8266.ino, board: nodemcuv2 }
+    
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v2
+
+            - name: Set up Python
+              uses: actions/setup-python@v2
+              with:
+                    python-version: '3.x'
+
+            - name: Install PlatformIO
+              run: |
+                    python -m pip install --upgrade pip
+                    pip install platformio
+
+            - name: Compile Examples
+              run: |
+                    pio ci --lib="." --board=${{ matrix.example.board }} ${{ matrix.example.path }}
