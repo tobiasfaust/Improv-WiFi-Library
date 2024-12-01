@@ -57,7 +57,8 @@ void setup()
 
   improvSerial.setDeviceInfo(ImprovTypes::ChipFamily::CF_ESP32, "ImprovWiFiLib", "1.0.0", "BasicWebServer", "http://{LOCAL_IPV4}?name=Guest");
   improvSerial.onImprovError(onImprovWiFiErrorCb);
-  improvSerial.onImprovConnected(onImprovWiFiConnectedCb);
+  //improvSerial.onImprovConnected(onImprovWiFiConnectedCb);
+  improvSerial.setOnConnectedCB(onImprovWiFiConnectedCb);
   improvSerial.setCustomConnectWiFi(connectWifi);  // Optional
 
   blink_led(100, 5);

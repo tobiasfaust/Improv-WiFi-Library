@@ -97,6 +97,10 @@ bool ImprovWiFi::onCommandCallback(ImprovTypes::ImprovCommand cmd)
       {
         onImprovConnectedCallback(cmd.ssid.c_str(), cmd.password.c_str());
       }
+      
+      if(onConnectedCB) {
+        onConnectedCB(cmd.ssid.c_str(), cmd.password.c_str());
+      }
     }
     else
     {

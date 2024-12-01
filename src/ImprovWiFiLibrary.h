@@ -17,6 +17,7 @@
 
 #include <Stream.h>
 #include "ImprovTypes.h"
+#include <functional>
 
 #ifdef ARDUINO
   #include <Arduino.h>
@@ -117,10 +118,18 @@ public:
    */
   typedef void(OnImprovConnected)(const char *ssid, const char *password);
 
+  /** Alternative */
+  std::function<void(const char *ssid, const char *password)> onConnectedCB;
+
+  void setOnConnectedCB(std::function<void(const char *ssid, const char *password)> cb) {
+    onConnectedCB = cb;
+  }
+
   /**
    * Callback function to customize the wifi connection if you needed. Optional.
    */
   typedef bool(CustomConnectWiFi)(const char *ssid, const char *password);
+
 
   /**
    * ## Methods
