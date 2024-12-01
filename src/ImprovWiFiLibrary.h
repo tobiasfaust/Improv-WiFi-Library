@@ -6,8 +6,11 @@
 
 #if defined(ARDUINO_ARCH_ESP8266)
   #include <ESP8266WiFi.h>
-  #define WIFI_OPEN ENC_TYPE_NONE
+  #define WIFI_OPEN ENC_TYPE_NONE 
+  #include <EEPROM.h>
+  #define EEPROM_SIZE 96
 #elif defined(ARDUINO_ARCH_ESP32)
+  #include <Preferences.h>
   #include <WiFi.h>
   #define WIFI_OPEN WIFI_AUTH_OPEN
 #endif
@@ -54,6 +57,8 @@ private:
   uint8_t  _buffer[128];
   uint8_t  _position = 0;
   uint32_t _stopme   = 0;
+  String    SSID;
+  String    PASSWORD;
 
   Stream *serial;
 
@@ -65,12 +70,18 @@ private:
   void setError(ImprovTypes::Error error);
   void getAvailableWifiNetworks();
   inline void replaceAll(std::string &str, const std::string &from, const std::string &to);
-
+  void saveWiFiCredentials(const char* ssid, const char* password);
+  void loadWiFiCredentials(String &ssid, String &password);
+  
   // improv SDK
   bool parseImprovSerial(size_t position, uint8_t byte, const uint8_t *buffer);
   ImprovTypes::ImprovCommand parseImprovData(const std::vector<uint8_t> &data, bool check_checksum = true);
   ImprovTypes::ImprovCommand parseImprovData(const uint8_t *data, size_t length, bool check_checksum = true);
   std::vector<uint8_t> build_rpc_response(ImprovTypes::Command command, const std::vector<std::string> &datum, bool add_checksum);
+
+  #ifdef ESP32
+    Preferences preferences;
+  #endif
 
 public:
   /**
@@ -88,6 +99,8 @@ public:
   {
     this->serial  = serial;
     this->_stopme = millis() + IMPROV_RUN_FOR;
+
+    this->loadWiFiCredentials(this->SSID, this->PASSWORD);
   }
 
   /**

@@ -89,6 +89,7 @@ bool ImprovWiFi::onCommandCallback(ImprovTypes::ImprovCommand cmd)
 
     if (success)
     {
+      this->saveWiFiCredentials(cmd.ssid.c_str(), cmd.password.c_str());
       setError(ImprovTypes::Error::ERROR_NONE);
       setState(ImprovTypes::STATE_PROVISIONED);
       sendDeviceUrl(cmd.command);
@@ -464,3 +465,48 @@ std::vector<uint8_t> ImprovWiFi::build_rpc_response(ImprovTypes::Command command
   }
   return out;
 }
+
+#ifdef ESP32
+void ImprovWiFi::saveWiFiCredentials(const char* ssid, const char* password) {
+  preferences.begin("wifi", false);
+  preferences.putString("ssid", ssid);
+  preferences.putString("password", password);
+  preferences.end();
+  Serial.println("WiFi credentials saved to NVS");
+}
+
+void ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
+  preferences.begin("wifi", true);
+  ssid = preferences.getString("ssid", "");
+  password = preferences.getString("password", "");
+  preferences.end();
+  Serial.println("WiFi credentials loaded from NVS");
+}
+#else
+void ImprovWiFi::saveWiFiCredentials(const char* ssid, const char* password) {
+  EEPROM.begin(EEPROM_SIZE);
+  for (int i = 0; i < 32; ++i) {
+    EEPROM.write(i, ssid[i]);
+  }
+  for (int i = 0; i < 64; ++i) {
+    EEPROM.write(32 + i, password[i]);
+  }
+  EEPROM.commit();
+  Serial.println("WiFi credentials saved to EEPROM");
+}
+
+void ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
+  char ssidArr[32];
+  char passwordArr[64];
+  EEPROM.begin(EEPROM_SIZE);
+  for (int i = 0; i < 32; ++i) {
+    ssidArr[i] = EEPROM.read(i);
+  }
+  for (int i = 0; i < 64; ++i) {
+    passwordArr[i] = EEPROM.read(32 + i);
+  }
+  ssid = String(ssidArr);
+  password = String(passwordArr);
+  Serial.println("WiFi credentials loaded from EEPROM");
+}
+#endif
