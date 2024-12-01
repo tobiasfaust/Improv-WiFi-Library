@@ -11,6 +11,17 @@ ImprovWiFi improvSerial(&Serial);
 char linebuf[80];
 int charcount = 0;
 
+void blink_led(int d, int times)
+{
+  for (int j = 0; j < times; j++)
+  {
+    digitalWrite(LED_BUILTIN, HIGH);
+    delay(d);
+    digitalWrite(LED_BUILTIN, LOW);
+    delay(d);
+  }
+}
+
 void onImprovWiFiErrorCb(ImprovTypes::Error err)
 {
   server.stop();
@@ -118,16 +129,5 @@ void handleHttpRequest()
     }
     delay(1);
     client.stop();
-  }
-}
-
-void blink_led(int d, int times)
-{
-  for (int j = 0; j < times; j++)
-  {
-    digitalWrite(LED_BUILTIN, HIGH);
-    delay(d);
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(d);
   }
 }
