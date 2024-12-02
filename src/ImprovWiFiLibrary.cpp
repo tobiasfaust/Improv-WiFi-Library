@@ -1,47 +1,94 @@
 #include "ImprovWiFiLibrary.h"
 
-void ImprovWiFi::handleSerial()
+ImprovWiFi::ImprovWiFi(Stream *serial):
+  _stopme(millis() + IMPROV_RUN_FOR),
+  serial(serial),
+  connectFailure(false),
+  maxConnectRetries(120),
+  numConnectRetriesDone(0),
+  retryDelay(1000),
+  millisLastConnectTry(0),
+  lastConnectStatus(false)
 {
+    
+}
 
-  if (serial->available() > 0)
-  {
+void ImprovWiFi::handleSerial() {
+
+  while (Serial.available() > 0) {
     uint8_t b = serial->read();
 
-    if (parseImprovSerial(_position, b, _buffer))
-    {
-      _buffer[_position++] = b;
-    }
-    else
-    {
-      _position = 0;
+    if (parseImprovSerial(this->_position, b, this->_buffer)) {
+      this->_buffer[this->_position++] = b;
+    } else {
+      this->_position = 0;
     }
   }
+
+  bool isConnected = this->isConnected();
+
+  if(isConnected != this->lastConnectStatus) {
+    if(isConnected) {
+      Serial.print(F("WiFi connected with IP: "));
+      Serial.println(WiFi.localIP().toString().c_str());
+      
+      if (onImprovConnectedCallback) {
+        onImprovConnectedCallback(this->SSID.c_str(), this->PASSWORD.c_str());
+      }
+
+      this->numConnectRetriesDone = 0;
+    } else {
+      Serial.println(F("WiFi connection lost."));
+      
+      if(onImprovErrorCallback) {
+        onImprovErrorCallback(ImprovTypes::ERROR_WIFI_DISCONNECTED);
+      }
+    }
+    
+    this->lastConnectStatus = isConnected;
+  }
+  
+  if(!isConnected) {
+
+    if(this->connectFailure) {
+      Serial.printf("Connection failure detected after %d tries and %d minutes, reboot...\n", 
+        this->numConnectRetriesDone,
+        this->numConnectRetriesDone * this->retryDelay);
+
+      if (onImprovErrorCallback) {
+        onImprovErrorCallback(ImprovTypes::ERROR_WIFI_CONNECT_GIVEUP);
+      }
+      //ESP.restart();
+    } else {
+      this->ConnectToWifi(false);  
+    }
+  }
+
 }
 
 bool ImprovWiFi::handleBuffer(uint8_t *buffer, uint16_t bytes) {
-    bool res = false;    
+  bool res = false;    
 
-    if (_stopme > millis()) 
-	for (uint16_t i = 0; i < bytes; i++) {
-	    uint8_t b = buffer[i];
-	    
-	    if (parseImprovSerial(_position, b, _buffer)) {
-		_buffer[_position++] = b;
-		res = true;
-	    } else {
-		_position = 0;
-	    }
-	}
-    
-    return res;
+  if (_stopme > millis()) 
+    for (uint16_t i = 0; i < bytes; i++) {
+      uint8_t b = buffer[i];
+          
+      if (parseImprovSerial(_position, b, _buffer)) {
+        _buffer[_position++] = b;
+        res = true;
+      } else {
+        _position = 0;
+      }
+    }
+  return res;
 }
 
 
 void ImprovWiFi::onErrorCallback(ImprovTypes::Error err)
 {
-  if (onImproErrorCallback)
+  if (onImprovErrorCallback)
   {
-    onImproErrorCallback(err);
+    onImprovErrorCallback(err);
   }
 }
 
@@ -87,19 +134,18 @@ bool ImprovWiFi::onCommandCallback(ImprovTypes::ImprovCommand cmd)
       success = tryConnectToWifi(cmd.ssid.c_str(), cmd.password.c_str());
     }
 
-    if (success)
-    {
-      this->saveWiFiCredentials(cmd.ssid.c_str(), cmd.password.c_str());
+    if (success) {
+      if (customWiFiCredentialSavingCallback) {
+        customWiFiCredentialSavingCallback(&cmd.ssid, &cmd.password);
+      } else {
+        this->saveWiFiCredentials(&cmd.ssid, &cmd.password);
+      }
+      
       setError(ImprovTypes::Error::ERROR_NONE);
       setState(ImprovTypes::STATE_PROVISIONED);
       sendDeviceUrl(cmd.command);
-      if (onImprovConnectedCallback)
-      {
+      if(onImprovConnectedCallback) {
         onImprovConnectedCallback(cmd.ssid.c_str(), cmd.password.c_str());
-      }
-      
-      if(onConnectedCB) {
-        onConnectedCB(cmd.ssid.c_str(), cmd.password.c_str());
       }
     }
     else
@@ -184,23 +230,70 @@ void ImprovWiFi::sendDeviceUrl(ImprovTypes::Command cmd)
   sendResponse(data);
 }
 
-void ImprovWiFi::onImprovError(OnImprovError *errorCallback)
-{
-  onImproErrorCallback = errorCallback;
+bool ImprovWiFi::ConnectToWifi(bool firstRun) {
+  // try to load credentials from NVS or EEPROM
+  if (this->SSID.isEmpty() || this->PASSWORD.isEmpty()) {
+    if (customWiFiCredentialLoadingCallback) {
+      customWiFiCredentialLoadingCallback(this->SSID, this->PASSWORD);
+    } else {
+      this->loadWiFiCredentials(this->SSID, this->PASSWORD);
+    }
+  }
+
+  if (this->SSID.isEmpty() || this->PASSWORD.isEmpty()) {
+    // no credentials found
+    return false;
+  }
+
+  unsigned long currentMillis = millis();
+
+  while (WiFi.status() != WL_CONNECTED) {
+    
+    if ( firstRun || (int)(currentMillis - this->millisLastConnectTry) >= this->retryDelay) {
+        this->millisLastConnectTry = currentMillis; 
+        Serial.println(F("Try to connect..."));
+
+        if(this->numConnectRetriesDone == 0) {
+          Serial.printf("Starting Wifi connection to %s\n", this->SSID.c_str());
+          WiFi.disconnect(true);
+          if (WiFi.getMode() != WIFI_STA) WiFi.mode(WIFI_STA);
+        } 
+        
+        if (this->numConnectRetriesDone < this->maxConnectRetries) {
+
+            WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str());
+
+            if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+              Serial.printf("Waiting %d/%dsec\n", this->numConnectRetriesDone * this->retryDelay/1000, this->maxConnectRetries * this->retryDelay/1000);
+              this->numConnectRetriesDone++;
+            } else {
+              Serial.println("\nWiFi Connected!");
+              this->numConnectRetriesDone = 0;
+              
+              if(onImprovConnectedCallback) {
+                onImprovConnectedCallback(this->SSID.c_str(), this->PASSWORD.c_str());
+              }
+
+              return true;
+            }
+          
+        } else {
+          Serial.println(F("Failed to connect WiFi."));
+          this->connectFailure = true;
+
+          if(onImprovErrorCallback) {
+            onImprovErrorCallback(ImprovTypes::ERROR_UNABLE_TO_CONNECT);
+          }
+
+          return false;
+        }   
+      }  
+  }
+  return false;
 }
 
-void ImprovWiFi::onImprovConnected(OnImprovConnected *connectedCallback)
-{
-  onImprovConnectedCallback = connectedCallback;
-}
-
-void ImprovWiFi::setCustomConnectWiFi(CustomConnectWiFi *connectWiFiCallBack)
-{
-  customConnectWiFiCallback = connectWiFiCallBack;
-}
-
-bool ImprovWiFi::tryConnectToWifi(const char *ssid, const char *password)
-{
+bool ImprovWiFi::tryConnectToWifi(const char *ssid, const char *password) {
+  //TODO - improve this function
   uint8_t count = 0;
 
   if (isConnected())
@@ -471,10 +564,10 @@ std::vector<uint8_t> ImprovWiFi::build_rpc_response(ImprovTypes::Command command
 }
 
 #ifdef ESP32
-void ImprovWiFi::saveWiFiCredentials(const char* ssid, const char* password) {
+void ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
   preferences.begin("wifi", false);
-  preferences.putString("ssid", ssid);
-  preferences.putString("password", password);
+  preferences.putString("ssid", ssid->c_str());
+  preferences.putString("password", password->c_str());
   preferences.end();
   Serial.println("WiFi credentials saved to NVS");
 }
@@ -487,13 +580,13 @@ void ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
   Serial.println("WiFi credentials loaded from NVS");
 }
 #else
-void ImprovWiFi::saveWiFiCredentials(const char* ssid, const char* password) {
+void ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
   EEPROM.begin(EEPROM_SIZE);
   for (int i = 0; i < 32; ++i) {
-    EEPROM.write(i, ssid[i]);
+    EEPROM.write(i, ssid->c_str()[i]);
   }
   for (int i = 0; i < 64; ++i) {
-    EEPROM.write(32 + i, password[i]);
+    EEPROM.write(32 + i, password->c_str()[i]);
   }
   EEPROM.commit();
   Serial.println("WiFi credentials saved to EEPROM");

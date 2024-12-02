@@ -58,10 +58,17 @@ private:
   uint8_t  _buffer[128];
   uint8_t  _position = 0;
   uint32_t _stopme   = 0;
-  String    SSID;
-  String    PASSWORD;
+  String    SSID     = "";
+  String    PASSWORD = "";
 
   Stream *serial;
+
+  bool      connectFailure;
+  uint16_t  maxConnectRetries;
+  uint16_t  numConnectRetriesDone;
+  uint16_t  retryDelay;
+  uint32_t  millisLastConnectTry;
+  bool      lastConnectStatus;
 
   void sendDeviceUrl(ImprovTypes::Command cmd);
   bool onCommandCallback(ImprovTypes::ImprovCommand cmd);
@@ -71,7 +78,7 @@ private:
   void setError(ImprovTypes::Error error);
   void getAvailableWifiNetworks();
   inline void replaceAll(std::string &str, const std::string &from, const std::string &to);
-  void saveWiFiCredentials(const char* ssid, const char* password);
+  void saveWiFiCredentials(std::string* ssid, std::string* password);
   void loadWiFiCredentials(String &ssid, String &password);
   
   // improv SDK
@@ -92,18 +99,12 @@ public:
   /**
    * Create an instance of ImprovWiFi
    *
-   * # Parameters
+   * ## Parameters
    *
    * - `serial` - Pointer to stream object used to handle requests, for the most cases use `Serial`
    */
-  ImprovWiFi(Stream *serial)
-  {
-    this->serial  = serial;
-    this->_stopme = millis() + IMPROV_RUN_FOR;
-
-    this->loadWiFiCredentials(this->SSID, this->PASSWORD);
-  }
-
+  ImprovWiFi(Stream *serial);
+  
   /**
    * ## Type definition
    */
@@ -111,25 +112,47 @@ public:
   /**
    * Callback function called when any error occurs during the protocol handling or wifi connection.
    */
-  typedef void(OnImprovError)(ImprovTypes::Error);
+  std::function<void(ImprovTypes::Error)> onImprovErrorCallback;
+
+  void onImprovError(std::function<void(ImprovTypes::Error)> cb) {
+    onImprovErrorCallback = cb;
+  }
 
   /**
    * Callback function called when the attempt of wifi connection is successful. It informs the SSID and Password used to that, it's a perfect time to save them for further use.
    */
-  typedef void(OnImprovConnected)(const char *ssid, const char *password);
+  std::function<void(const char *ssid, const char *password)> onImprovConnectedCallback;
 
-  /** Alternative */
-  std::function<void(const char *ssid, const char *password)> onConnectedCB;
-
-  void setOnConnectedCB(std::function<void(const char *ssid, const char *password)> cb) {
-    onConnectedCB = cb;
+  void onImprovConnected(std::function<void(const char *ssid, const char *password)> cb) {
+    onImprovConnectedCallback = cb;
   }
 
   /**
    * Callback function to customize the wifi connection if you needed. Optional.
    */
-  typedef bool(CustomConnectWiFi)(const char *ssid, const char *password);
+  std::function<bool(const char *ssid, const char *password)> customConnectWiFiCallback;
 
+  void setCustomConnectWiFi(std::function<bool(const char *ssid, const char *password)> cb) {
+    customConnectWiFiCallback = cb;
+  }
+
+  /**
+   * Callback function to customize the wifi credential saving if you needed. Optional.
+   */
+  std::function<void(std::string *ssid, std::string *password)> customWiFiCredentialSavingCallback;
+
+  void setCustomWiFiCredentialSaving(std::function<void(std::string *ssid, std::string *password)> cb) {
+    customWiFiCredentialSavingCallback = cb;
+  }
+
+  /**
+   * Callback function to customize the wifi credential saving if you needed. Optional.
+   */
+  std::function<void(String &ssid, String &password)> customWiFiCredentialLoadingCallback;
+
+  void setCustomWiFiCredentialLoading(std::function<void(String &ssid, String &password)> cb) {
+    customWiFiCredentialLoadingCallback = cb;
+  }
 
   /**
    * ## Methods
@@ -159,26 +182,16 @@ public:
   void setDeviceInfo(ImprovTypes::ChipFamily chipFamily, const char *firmwareName, const char *firmwareVersion, const char *deviceName);
 
   /**
-   * Method to set the typedef OnImprovError callback.
-   */
-  void onImprovError(OnImprovError *errorCallback);
-
-  /**
-   * Method to set the typedef OnImprovConnected callback.
-   */
-  void onImprovConnected(OnImprovConnected *connectedCallback);
-
-  /**
-   * Method to set the typedef CustomConnectWiFi callback.
-   */
-  void setCustomConnectWiFi(CustomConnectWiFi *connectWiFiCallBack);
-
-  /**
    * Default method to connect in a WiFi network.
    * It waits `DELAY_MS_WAIT_WIFI_CONNECTION` milliseconds (default 500) during `MAX_ATTEMPTS_WIFI_CONNECTION` (default 20) until it get connected. If it does not happen, an error `ERROR_UNABLE_TO_CONNECT` is thrown.
    *
    */
   bool tryConnectToWifi(const char *ssid, const char *password);
+  
+  /**
+   * regular method to connect to wifi with present credentials
+   */
+  bool ConnectToWifi(bool firstRun);
 
   /**
    * Check if connection is established using `WiFi.status() == WL_CONNECTED`
@@ -186,8 +199,4 @@ public:
    */
   bool isConnected();
 
-private:
-  OnImprovError *onImproErrorCallback;
-  OnImprovConnected *onImprovConnectedCallback;
-  CustomConnectWiFi *customConnectWiFiCallback;
 };

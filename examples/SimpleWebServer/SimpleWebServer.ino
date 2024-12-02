@@ -26,6 +26,10 @@ void onImprovWiFiErrorCb(ImprovTypes::Error err)
 {
   server.stop();
   blink_led(2000, 3);
+
+  if(err == ImprovTypes::Error::ERROR_WIFI_CONNECT_GIVEUP) {
+    ESP.restart();
+  }
 }
 
 void onImprovWiFiConnectedCb(const char *ssid, const char *password)
@@ -33,6 +37,14 @@ void onImprovWiFiConnectedCb(const char *ssid, const char *password)
   // Save ssid and password here
   server.begin();
   blink_led(100, 3);
+}
+
+void saveWifiCredentials(std::string* ssid, std::string* password) {
+  // Save ssid and password here
+}
+
+void loadWifiCredentials(String &ssid, String &password) {
+  // Load ssid and password here
 }
 
 bool connectWifi(const char *ssid, const char *password)
@@ -57,9 +69,11 @@ void setup()
 
   improvSerial.setDeviceInfo(ImprovTypes::ChipFamily::CF_ESP32, "ImprovWiFiLib", "1.0.0", "BasicWebServer", "http://{LOCAL_IPV4}?name=Guest");
   improvSerial.onImprovError(onImprovWiFiErrorCb);
-  //improvSerial.onImprovConnected(onImprovWiFiConnectedCb);
-  improvSerial.setOnConnectedCB(onImprovWiFiConnectedCb);
-  improvSerial.setCustomConnectWiFi(connectWifi);  // Optional
+  improvSerial.onImprovConnected(onImprovWiFiConnectedCb);
+  //improvSerial.setCustomConnectWiFi(connectWifi);  // Optional
+  //improvSerial.setCustomWiFiCredentialSaving(saveWifiCredentials); // Optional
+  //improvSerial.setCustomWiFiCredentialLoading(loadWifiCredentials); // Optional
+  improvSerial.ConnectToWifi(true);
 
   blink_led(100, 5);
 }
