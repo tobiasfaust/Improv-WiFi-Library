@@ -66,7 +66,7 @@ void setup()
 void loop()
 {
 
-  improvSerial.handleSerial();
+  improvSerial.loop();
 
   if (improvSerial.isConnected())
   {

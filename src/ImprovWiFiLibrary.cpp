@@ -13,7 +13,7 @@ ImprovWiFi::ImprovWiFi(Stream *serial):
     
 }
 
-void ImprovWiFi::handleSerial() {
+void ImprovWiFi::loop() {
 
   while (Serial.available() > 0) {
     uint8_t b = serial->read();

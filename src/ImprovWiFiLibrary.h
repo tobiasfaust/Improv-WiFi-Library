@@ -44,7 +44,7 @@
  * }
  *
  * void loop() {
- *   improvSerial.handleSerial();
+ *   improvSerial.loop();
  * }
  * ```
  *
@@ -155,14 +155,10 @@ public:
   }
 
   /**
-   * ## Methods
-   **/
-
-  /**
    * Check if a communication via serial is happening. Put this call on your loop().
    *
    */
-  void handleSerial();
+  void loop();
   bool handleBuffer(uint8_t *buffer, uint16_t bytes);
 
   /**
