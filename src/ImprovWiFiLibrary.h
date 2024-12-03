@@ -27,27 +27,9 @@
 /**
  * Improv WiFi class
  *
- * ### Description
+ * @brief Handles the Improv WiFi Serial protocol (https://www.improv-wifi.com/serial/)
  *
- * Handles the Improv WiFi Serial protocol (https://www.improv-wifi.com/serial/)
- *
- * ### Example
- *
- * Simple example of using ImprovWiFi lib. A complete one can be seen in `examples/` folder.
- *
- * ```cpp
- * #include <ImprovWiFiLibrary.h>
- *
- * ImprovWiFi improvSerial(&Serial);
- *
- * void setup() {
- *   improvSerial.setDeviceInfo(ImprovTypes::ChipFamily::CF_ESP32, "My-Device-9a4c2b", "2.1.5", "My Device");
- * }
- *
- * void loop() {
- *   improvSerial.loop();
- * }
- * ```
+ * @attention This library is compatible with ESP32 and ESP8266.
  *
  */
 class ImprovWiFi
@@ -95,105 +77,150 @@ private:
 
 public:
   /**
-   * ## Constructors
-   **/
-
-  /**
-   * Create an instance of ImprovWiFi
+   * @brief Constructor, create an instance of ImprovWiFi
    *
-   * ## Parameters
-   *
-   * - `serial` - Pointer to stream object used to handle requests, for the most cases use `Serial`
+   * @param serial Pointer to stream object used to handle requests, for the most cases use `Serial`
    */
   ImprovWiFi(Stream *serial);
   
   /**
-   * ## Type definition
-   */
-
-  /**
-   * Callback functions called when any error occurs during the protocol handling or wifi connection.
-   */
-  std::vector<std::function<void(ImprovTypes::Error)>> onImprovErrorCallbacks;
-
+  * @brief     Callback functions called when any error occurs during the protocol handling or wifi connection.
+  *            Multiple callbacks can be set.
+  *
+  * @param     Error  error message
+  *
+  * @return
+  *    - none
+  */
   void onImprovError(std::function<void(ImprovTypes::Error)> cb) {
     onImprovErrorCallbacks.push_back(cb);
   }
+  std::vector<std::function<void(ImprovTypes::Error)>> onImprovErrorCallbacks;
 
   /**
-   * Callback functions called when the attempt of wifi connection is successful. It informs the SSID and Password used to that, it's a perfect time to save them for further use.
-   */
-  std::vector<std::function<void(const char *ssid, const char *password)>> onImprovConnectedCallbacks;
-
+  * @brief     Callback functions called when the attempt of wifi connection is successful. 
+  *            It informs the SSID and Password used to that, it's a perfect time to save them for further use.
+  *            Multiple callbacks can be set.
+  *
+  * @param     ssid  wifi ssid
+  * @param     password  wifi password
+  *
+  * @return
+  *    - none
+  */
   void onImprovConnected(std::function<void(const char *ssid, const char *password)> cb) {
     onImprovConnectedCallbacks.push_back(cb);
   }
+  std::vector<std::function<void(const char *ssid, const char *password)>> onImprovConnectedCallbacks;
 
   /**
-   * Callback function to customize the wifi connection if you needed. Optional.
-   */
-  std::function<bool(const char *ssid, const char *password)> customConnectWiFiCallback;
-
+  * @brief     Callback function to customize the wifi connection if you needed. Optional.
+  *  
+  * @attention If you set this callback, the default connection method will be ignored.
+  *
+  * @param     ssid  wifi ssid
+  * @param     password  wifi password
+  *
+  * @return
+  *    - none
+  */
   void setCustomConnectWiFi(std::function<bool(const char *ssid, const char *password)> cb) {
     customConnectWiFiCallback = cb;
   }
+  std::function<bool(const char *ssid, const char *password)> customConnectWiFiCallback;
 
+ 
   /**
-   * Callback function to customize the wifi credential saving if you needed. Optional.
-   */
-  std::function<bool(std::string *ssid, std::string *password)> customWiFiCredentialSavingCallback;
-
+  * @brief     Callback function to customize the wifi credential saving if you needed. Optional.
+  *  
+  * @attention If you set this callback, the default saving method will be ignored.
+  *
+  * @param     ssid  wifi ssid
+  * @param     password  wifi password
+  *
+  * @return    
+  *   - bool  true if the credentials were saved successfully
+  */
   void setCustomWiFiCredentialSaving(std::function<bool(std::string *ssid, std::string *password)> cb) {
     customWiFiCredentialSavingCallback = cb;
   }
+  std::function<bool(std::string *ssid, std::string *password)> customWiFiCredentialSavingCallback;
+
 
   /**
-   * Callback function to customize the wifi credential saving if you needed. Optional.
-   */
-  std::function<bool(String &ssid, String &password)> customWiFiCredentialLoadingCallback;
-
-  void setCustomWiFiCredentialLoading(std::function<bool(String &ssid, String &password)> cb) {
+  * @brief     Callback function to customize the wifi credential loading if you needed. Optional.
+  *  
+  * @attention If you set this callback, the default loading method will be ignored.
+  *
+  * @param     ssid  wifi ssid
+  * @param     password  wifi password
+  *
+  * @return    
+  *   - bool  true if the credentials were loaded successfully
+  */
+   void setCustomWiFiCredentialLoading(std::function<bool(String &ssid, String &password)> cb) {
     customWiFiCredentialLoadingCallback = cb;
   }
+  std::function<bool(String &ssid, String &password)> customWiFiCredentialLoadingCallback;
+
 
   /**
-   * Check if a communication via serial is happening. Put this call on your loop().
-   *
-   */
+  * @brief     Check if a communication via serial is happening. It handles also wifi reconnection.
+  *            Put this call on your loop().
+  * 
+  * @attention Use "onImprovError" callback to handle wifi connection errors.
+  *  
+  */
   void loop();
+
   bool handleBuffer(uint8_t *buffer, uint16_t bytes);
 
+  
   /**
-   * Set details of your device.
-   *
-   * # Parameters
-   *
-   * - `chipFamily` - Chip variant, supported are CF_ESP32, CF_ESP32_C3, CF_ESP32_S2, CF_ESP32_S3, CF_ESP8266. Consult ESP Home [docs](https://esphome.io/components/esp32.html) for more information.
-   * - `firmwareName` - Firmware name
-   * - `firmwareVersion` - Firmware version
-   * - `deviceName` - Your device name
-   * - `deviceUrl`- The local URL to access your device. A placeholder called {LOCAL_IPV4} is available to form elaboreted URLs. E.g. `http://{LOCAL_IPV4}?name=Guest`.
-   *   There is overloaded method without `deviceUrl`, in this case the URL will be the local IP.
-   *
-   */
+  * @brief     Set details of your device. It's used to inform the ImprovWiFi library about your device.
+  *  
+  * @param     chipFamily  Chip variant, supported are CF_ESP32, CF_ESP32_C3, CF_ESP32_S2, CF_ESP32_S3, CF_ESP8266
+  * @param     firmwareName  Firmware name
+  * @param     firmwareVersion  Firmware version
+  * @param     deviceName  Your device name
+  * @param     deviceUrl  The local URL to access your device. A placeholder called {LOCAL_IPV4} is available to form elaboreted URLs. E.g. `http://{LOCAL_IPV4}?name=Guest`.
+  *     There is overloaded method without `deviceUrl`, in this case the URL will be the local IP.  
+  *
+  * @return    
+  *   - none
+  */
   void setDeviceInfo(ImprovTypes::ChipFamily chipFamily, const char *firmwareName, const char *firmwareVersion, const char *deviceName, const char *deviceUrl);
   void setDeviceInfo(ImprovTypes::ChipFamily chipFamily, const char *firmwareName, const char *firmwareVersion, const char *deviceName);
 
-  /**
-   * Default method to connect in a WiFi network.
-   * It waits `DELAY_MS_WAIT_WIFI_CONNECTION` milliseconds (default 500) during `MAX_ATTEMPTS_WIFI_CONNECTION` (default 20) until it get connected. If it does not happen, an error `ERROR_UNABLE_TO_CONNECT` is thrown.
-   *
-   */
-  bool tryConnectToWifi(const char *ssid, const char *password);
   
   /**
-   * regular method to connect to wifi with present credentials
-   */
+  * @brief     Default method to connect in a WiFi network.
+  *   It waits `DELAY_MS_WAIT_WIFI_CONNECTION` milliseconds (default 500) during `MAX_ATTEMPTS_WIFI_CONNECTION` (default 20) until it get connected. 
+  *   If it does not happen, an error `ERROR_UNABLE_TO_CONNECT` is thrown.
+  *  
+  * @param     ssid  wifi ssid
+  * @param     password  wifi password
+  *
+  * @return    
+  *   - bool  true if the credentials were loaded successfully
+  */
+  bool tryConnectToWifi(const char *ssid, const char *password);
+  
+ 
+  /**
+  * @brief     regular method to connect to wifi with present credentials.
+  *   Use this method in your setup function to connect to wifi. Optional.
+  *  
+  * @param     ssid  wifi ssid
+  * @param     password  wifi password
+  *
+  * @return    
+  *   - bool  true if the credentials were loaded successfully
+  */
   bool ConnectToWifi(bool firstRun);
 
   /**
-   * Check if connection is established using `WiFi.status() == WL_CONNECTED`
-   *
+   * @brief if connection is established using `WiFi.status() == WL_CONNECTED`
    */
   bool isConnected();
 
