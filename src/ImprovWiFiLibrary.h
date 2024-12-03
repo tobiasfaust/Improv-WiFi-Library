@@ -18,6 +18,7 @@
 #include <Stream.h>
 #include "ImprovTypes.h"
 #include <functional>
+#include <vector>
 
 #ifdef ARDUINO
   #include <Arduino.h>
@@ -69,6 +70,7 @@ private:
   uint16_t  retryDelay;
   uint32_t  millisLastConnectTry;
   bool      lastConnectStatus;
+  bool      WifiCredentialsAvailable = false;
 
   void sendDeviceUrl(ImprovTypes::Command cmd);
   bool onCommandCallback(ImprovTypes::ImprovCommand cmd);
@@ -78,8 +80,8 @@ private:
   void setError(ImprovTypes::Error error);
   void getAvailableWifiNetworks();
   inline void replaceAll(std::string &str, const std::string &from, const std::string &to);
-  void saveWiFiCredentials(std::string* ssid, std::string* password);
-  void loadWiFiCredentials(String &ssid, String &password);
+  bool saveWiFiCredentials(std::string* ssid, std::string* password);
+  bool loadWiFiCredentials(String &ssid, String &password);
   
   // improv SDK
   bool parseImprovSerial(size_t position, uint8_t byte, const uint8_t *buffer);
@@ -110,21 +112,21 @@ public:
    */
 
   /**
-   * Callback function called when any error occurs during the protocol handling or wifi connection.
+   * Callback functions called when any error occurs during the protocol handling or wifi connection.
    */
-  std::function<void(ImprovTypes::Error)> onImprovErrorCallback;
+  std::vector<std::function<void(ImprovTypes::Error)>> onImprovErrorCallbacks;
 
   void onImprovError(std::function<void(ImprovTypes::Error)> cb) {
-    onImprovErrorCallback = cb;
+    onImprovErrorCallbacks.push_back(cb);
   }
 
   /**
-   * Callback function called when the attempt of wifi connection is successful. It informs the SSID and Password used to that, it's a perfect time to save them for further use.
+   * Callback functions called when the attempt of wifi connection is successful. It informs the SSID and Password used to that, it's a perfect time to save them for further use.
    */
-  std::function<void(const char *ssid, const char *password)> onImprovConnectedCallback;
+  std::vector<std::function<void(const char *ssid, const char *password)>> onImprovConnectedCallbacks;
 
   void onImprovConnected(std::function<void(const char *ssid, const char *password)> cb) {
-    onImprovConnectedCallback = cb;
+    onImprovConnectedCallbacks.push_back(cb);
   }
 
   /**
@@ -139,18 +141,18 @@ public:
   /**
    * Callback function to customize the wifi credential saving if you needed. Optional.
    */
-  std::function<void(std::string *ssid, std::string *password)> customWiFiCredentialSavingCallback;
+  std::function<bool(std::string *ssid, std::string *password)> customWiFiCredentialSavingCallback;
 
-  void setCustomWiFiCredentialSaving(std::function<void(std::string *ssid, std::string *password)> cb) {
+  void setCustomWiFiCredentialSaving(std::function<bool(std::string *ssid, std::string *password)> cb) {
     customWiFiCredentialSavingCallback = cb;
   }
 
   /**
    * Callback function to customize the wifi credential saving if you needed. Optional.
    */
-  std::function<void(String &ssid, String &password)> customWiFiCredentialLoadingCallback;
+  std::function<bool(String &ssid, String &password)> customWiFiCredentialLoadingCallback;
 
-  void setCustomWiFiCredentialLoading(std::function<void(String &ssid, String &password)> cb) {
+  void setCustomWiFiCredentialLoading(std::function<bool(String &ssid, String &password)> cb) {
     customWiFiCredentialLoadingCallback = cb;
   }
 
