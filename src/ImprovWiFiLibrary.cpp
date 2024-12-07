@@ -13,8 +13,7 @@ ImprovWiFi::ImprovWiFi(Stream *serial):
     
 }
 
-void ImprovWiFi::loop() {
-
+void ImprovWiFi::checkSerial() {
   while (Serial.available() > 0) {
     uint8_t b = serial->read();
 
@@ -24,6 +23,10 @@ void ImprovWiFi::loop() {
       this->_position = 0;
     }
   }
+}
+
+void ImprovWiFi::loop() {
+  this->checkSerial();
 
   bool isConnected = this->isConnected();
 
@@ -264,6 +267,7 @@ bool ImprovWiFi::ConnectToWifi(bool firstRun) {
   unsigned long currentMillis = millis();
 
   while (WiFi.status() != WL_CONNECTED) {
+    this->checkSerial();
     
     if ( firstRun || (int)(currentMillis - this->millisLastConnectTry) >= this->retryDelay) {
         this->millisLastConnectTry = currentMillis; 

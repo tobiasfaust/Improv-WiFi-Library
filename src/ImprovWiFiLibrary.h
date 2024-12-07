@@ -4,10 +4,6 @@
 #define IMPROV_RUN_FOR 60000
 #endif
 
-#ifdef ARDUINO
-  #include <Arduino.h>
-#endif
-
 #if defined(ARDUINO_ARCH_ESP8266)
   #include <ESP8266WiFi.h>
   #include <EEPROM.h>
@@ -24,6 +20,10 @@
 #include "ImprovTypes.h"
 #include <functional>
 #include <vector>
+
+#ifdef ARDUINO
+  #include <Arduino.h>
+#endif
 
 /**
  * Improv WiFi class
@@ -65,6 +65,7 @@ private:
   inline void replaceAll(std::string &str, const std::string &from, const std::string &to);
   bool saveWiFiCredentials(std::string* ssid, std::string* password);
   bool loadWiFiCredentials(String &ssid, String &password);
+  void checkSerial();
   
   // improv SDK
   bool parseImprovSerial(size_t position, uint8_t byte, const uint8_t *buffer);
