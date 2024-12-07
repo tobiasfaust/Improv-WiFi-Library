@@ -4,6 +4,10 @@
 #define IMPROV_RUN_FOR 60000
 #endif
 
+#ifdef ARDUINO
+  #include <Arduino.h>
+#endif
+
 #if defined(ARDUINO_ARCH_ESP8266)
   #include <ESP8266WiFi.h>
   #define WIFI_OPEN ENC_TYPE_NONE 
@@ -19,10 +23,6 @@
 #include "ImprovTypes.h"
 #include <functional>
 #include <vector>
-
-#ifdef ARDUINO
-  #include <Arduino.h>
-#endif
 
 /**
  * Improv WiFi class

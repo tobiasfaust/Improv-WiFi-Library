@@ -617,32 +617,64 @@ bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
 }
 #else
 bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
-  EEPROM.begin(EEPROM_SIZE);
-  for (int i = 0; i < 32; ++i) {
+  EEPROM.begin(WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH);
+  
+  // make sure the EEPROM is clean
+  for (size_t i = 0; i < WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH ; i++) {
+    EEPROM.write(i, 0xFF);
+  }
+  
+  // save the SSID
+  for (size_t i = 0; i < ssid->length(); i++) {
     EEPROM.write(i, ssid->c_str()[i]);
   }
-  for (int i = 0; i < 64; ++i) {
-    EEPROM.write(32 + i, password->c_str()[i]);
+  EEPROM.write(ssid->length(), 0); // null-terminate the string
+
+  // save the password
+  for (size_t i = 0; i < password->length(); i++) {
+    EEPROM.write(WIFI_SSID_LENGTH + i, password->c_str()[i]);
   }
+  EEPROM.write(WIFI_SSID_LENGTH + password->length(), 0); // null-terminate the string
+
   EEPROM.commit();
-  Serial.println("WiFi credentials saved to EEPROM");
+  EEPROM.end(); 
+
+  Serial.println("WiFi credentials saved to EEPROM successfully.");
   return true;
 }
 
 bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
-  char ssidArr[32];
-  char passwordArr[64];
-  EEPROM.begin(EEPROM_SIZE);
-  for (int i = 0; i < 32; ++i) {
-    ssidArr[i] = EEPROM.read(i);
+  char myssid[WIFI_SSID_LENGTH];
+  char mypassword[WIFI_PASSWORD_LENGTH];
+  bool result = false;
+  
+  // Inline-Funktion zur Überprüfung der Gültigkeit von Credentials
+  auto isValidCredential = [](const char* credential, size_t length) -> bool {
+    for (size_t i = 0; i < length; i++) {
+      if (credential[i] != 0xFF) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  EEPROM.begin(WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH);
+  EEPROM.get(0, myssid);
+  EEPROM.get(32, mypassword);
+  EEPROM.end();
+
+  if (isValidCredential(myssid, WIFI_SSID_LENGTH) && isValidCredential(mypassword, WIFI_PASSWORD_LENGTH)) {
+    Serial.println("WiFi credentials loaded from EEPROM successfully.");
+    //Serial.printf("SSID: %s, Password: %s\n", myssid, mypassword);
+    ssid = String(myssid);
+    password = String(mypassword);
+
+    result = true;
+  } else {
+    Serial.println("No WiFi credentials on EEPROM found.");
+    result = false;
   }
-  for (int i = 0; i < 64; ++i) {
-    passwordArr[i] = EEPROM.read(32 + i);
-  }
-  ssid = String(ssidArr);
-  password = String(passwordArr);
-  Serial.println("WiFi credentials loaded from EEPROM");
-  this->WifiCredentialsAvailable = true;
-  return true;
+  
+  return result;
 }
 #endif
