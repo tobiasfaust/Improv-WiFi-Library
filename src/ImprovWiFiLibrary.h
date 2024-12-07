@@ -10,9 +10,10 @@
 
 #if defined(ARDUINO_ARCH_ESP8266)
   #include <ESP8266WiFi.h>
-  #define WIFI_OPEN ENC_TYPE_NONE 
   #include <EEPROM.h>
-  #define EEPROM_SIZE 96
+  #define WIFI_OPEN ENC_TYPE_NONE 
+  #define WIFI_SSID_LENGTH 32
+  #define WIFI_PASSWORD_LENGTH 64
 #elif defined(ARDUINO_ARCH_ESP32)
   #include <Preferences.h>
   #include <WiFi.h>
