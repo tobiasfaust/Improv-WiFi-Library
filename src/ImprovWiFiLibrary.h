@@ -213,11 +213,10 @@ public:
   * @brief     regular method to connect to wifi with present credentials.
   *   Use this method in your setup function to connect to wifi. Optional.
   *  
-  * @param     ssid  wifi ssid
-  * @param     password  wifi password
+  * @param     firstRun  true if it's the first time running the device
   *
   * @return    
-  *   - bool  true if the credentials were loaded successfully
+  *   - bool  true if connect was successful
   */
   bool ConnectToWifi(bool firstRun);
 
