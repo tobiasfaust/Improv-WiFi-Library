@@ -268,7 +268,7 @@ bool ImprovWiFi::ConnectToWifi(bool firstRun) {
 
   while (WiFi.status() != WL_CONNECTED) {
     this->checkSerial();
-    
+
     if ( firstRun || (int)(currentMillis - this->millisLastConnectTry) >= this->retryDelay) {
         this->millisLastConnectTry = currentMillis; 
         Serial.println(F("Try to connect..."));
@@ -282,8 +282,17 @@ bool ImprovWiFi::ConnectToWifi(bool firstRun) {
         if (this->numConnectRetriesDone < this->maxConnectRetries) {
 
             WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str());
+            
+            // wifi connect needs some time, wait 5 seconds
+            uint16_t timeout=5000;
+            uint32_t start = millis();
+            while (WiFi.status() != WL_CONNECTED && millis() - start < timeout) {
+              this->checkSerial();
+              delay(100);
+            }
 
-            if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+            //if (WiFi.waitForConnectResult(this->retryDelay) != WL_CONNECTED) {
+            if (WiFi.status() != WL_CONNECTED) {
               Serial.printf("Waiting %d/%dsec\n", this->numConnectRetriesDone * this->retryDelay/1000, this->maxConnectRetries * this->retryDelay/1000);
               this->numConnectRetriesDone++;
             } else {
@@ -344,7 +353,7 @@ bool ImprovWiFi::tryConnectToWifi(const char *ssid, const char *password) {
 
 void ImprovWiFi::getAvailableWifiNetworks()
 {
-  int networkNum = WiFi.scanNetworks(false, false); // Wait for scan result, hide hidden
+  uint16_t networkNum = WiFi.scanNetworks(false, false); // Wait for scan result, hide hidden
 
   if (networkNum==0)
       networkNum = WiFi.scanNetworks(false, false); 
@@ -353,9 +362,9 @@ void ImprovWiFi::getAvailableWifiNetworks()
       int indices[networkNum];
       
       // Sort RSSI - strongest first
-      for (uint32_t i = 0; i < networkNum; i++) { indices[i] = i; }
-      for (uint32_t i = 0; i < networkNum; i++) {
-          for (uint32_t j = i + 1; j < networkNum; j++) {
+      for (uint16_t i = 0; i < networkNum; i++) { indices[i] = i; }
+      for (uint16_t i = 0; i < networkNum; i++) {
+          for (uint16_t j = i + 1; j < networkNum; j++) {
 	      if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])) {
 		  std::swap(indices[i], indices[j]);
 	      }
@@ -363,10 +372,10 @@ void ImprovWiFi::getAvailableWifiNetworks()
       }
       
       // Remove duplicate SSIDs - IMPROV does not distinguish between channels so no need to keep them
-      for (uint32_t i = 0; i < networkNum; i++) {
+      for (uint16_t i = 0; i < networkNum; i++) {
           if (-1 == indices[i]) { continue; }
           String cssid = WiFi.SSID(indices[i]);
-          for (uint32_t j = i + 1; j < networkNum; j++) {
+          for (uint16_t j = i + 1; j < networkNum; j++) {
 	      if (cssid == WiFi.SSID(indices[j])) {
 		  indices[j] = -1; // Set dup aps to index -1
 	      }
@@ -375,7 +384,7 @@ void ImprovWiFi::getAvailableWifiNetworks()
       
   
       // Send networks
-      for (uint32_t i = 0; i < networkNum; i++) {
+      for (uint16_t i = 0; i < networkNum; i++) {
           if (-1 == indices[i]) { continue; }                  // Skip dups
           String ssid_copy = WiFi.SSID(indices[i]);
           if (!ssid_copy.length()) { ssid_copy = F("no_name"); }
@@ -426,10 +435,10 @@ bool ImprovWiFi::parseImprovSerial(size_t position, uint8_t byte, const uint8_t 
   uint8_t type = buffer[7];
   uint8_t data_len = buffer[8];
 
-  if (position <= 8 + data_len)
+  if (position <= 8 + (size_t)data_len)
     return true;
 
-  if (position == 8 + data_len + 1)
+  if (position == 8 + (size_t)data_len + 1)
   {
     uint8_t checksum = 0x00;
     for (size_t i = 0; i < position; i++)
