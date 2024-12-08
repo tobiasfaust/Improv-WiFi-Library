@@ -50,7 +50,6 @@ private:
   bool      connectFailure;
   uint16_t  maxConnectRetries;
   uint16_t  numConnectRetriesDone;
-  uint16_t  retryDelay;
   uint32_t  millisLastConnectTry;
   bool      lastConnectStatus;
   bool      WifiCredentialsAvailable = false;
@@ -218,7 +217,7 @@ public:
   * @return    
   *   - bool  true if connect was successful
   */
-  bool ConnectToWifi(bool firstRun);
+  bool ConnectToWifi();
 
   /**
    * @brief if connection is established using `WiFi.status() == WL_CONNECTED`

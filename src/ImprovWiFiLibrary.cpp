@@ -6,7 +6,6 @@ ImprovWiFi::ImprovWiFi(Stream *serial):
   connectFailure(false),
   maxConnectRetries(120),
   numConnectRetriesDone(0),
-  retryDelay(1000),
   millisLastConnectTry(0),
   lastConnectStatus(false)
 {
@@ -59,9 +58,8 @@ void ImprovWiFi::loop() {
   if(!isConnected && this->WifiCredentialsAvailable) {
 
     if(this->connectFailure) {
-      Serial.printf("Connection failure detected after %d tries and %d minutes, reboot...\n", 
-        this->numConnectRetriesDone,
-        this->numConnectRetriesDone * this->retryDelay);
+      Serial.printf("Connection failure detected after %d tries, reboot...\n", 
+        this->numConnectRetriesDone);
 
       if (!onImprovErrorCallbacks.empty()) {
         for (auto &cb : onImprovErrorCallbacks) {
@@ -70,7 +68,7 @@ void ImprovWiFi::loop() {
       }
       //ESP.restart();
     } else {
-      this->ConnectToWifi(false);  
+      this->ConnectToWifi();  
     }
   }
 
@@ -245,7 +243,7 @@ void ImprovWiFi::sendDeviceUrl(ImprovTypes::Command cmd)
   sendResponse(data);
 }
 
-bool ImprovWiFi::ConnectToWifi(bool firstRun) {
+bool ImprovWiFi::ConnectToWifi() {
   // try to load credentials from NVS or EEPROM
   if (this->SSID.isEmpty() || this->PASSWORD.isEmpty()) {
     if (customWiFiCredentialLoadingCallback) {
@@ -269,58 +267,54 @@ bool ImprovWiFi::ConnectToWifi(bool firstRun) {
   while (WiFi.status() != WL_CONNECTED) {
     this->checkSerial();
 
-    if ( firstRun || (int)(currentMillis - this->millisLastConnectTry) >= this->retryDelay) {
-        this->millisLastConnectTry = currentMillis; 
-        Serial.println(F("Try to connect..."));
+    this->millisLastConnectTry = currentMillis; 
+    Serial.println(F("Try to connect..."));
 
-        if(this->numConnectRetriesDone == 0) {
-          Serial.printf("Starting Wifi connection to %s\n", this->SSID.c_str());
-          WiFi.disconnect(true);
-          if (WiFi.getMode() != WIFI_STA) WiFi.mode(WIFI_STA);
-        } 
+    if(this->numConnectRetriesDone == 0) {
+      Serial.printf("Starting Wifi connection to %s\n", this->SSID.c_str());
+      WiFi.disconnect(true);
+      if (WiFi.getMode() != WIFI_STA) WiFi.mode(WIFI_STA);
+    } 
         
-        if (this->numConnectRetriesDone < this->maxConnectRetries) {
+    if (this->numConnectRetriesDone < this->maxConnectRetries) {
 
-            WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str());
+      WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str());
             
-            // wifi connect needs some time, wait 5 seconds
-            uint16_t timeout=5000;
-            uint32_t start = millis();
-            while (WiFi.status() != WL_CONNECTED && millis() - start < timeout) {
-              this->checkSerial();
-              delay(100);
-            }
+      // wifi connect needs some time, wait 5 seconds
+      uint16_t timeout=5000;
+      uint32_t start = millis();
+      while (WiFi.status() != WL_CONNECTED && millis() - start < timeout) {
+        this->checkSerial();
+        delay(100);
+      }
 
-            //if (WiFi.waitForConnectResult(this->retryDelay) != WL_CONNECTED) {
-            if (WiFi.status() != WL_CONNECTED) {
-              Serial.printf("Waiting %d/%dsec\n", this->numConnectRetriesDone * this->retryDelay/1000, this->maxConnectRetries * this->retryDelay/1000);
-              this->numConnectRetriesDone++;
-            } else {
-              Serial.println("\nWiFi Connected!");
-              this->numConnectRetriesDone = 0;
+      if (WiFi.status() != WL_CONNECTED) {
+        Serial.printf("Waiting %d/%dsec\n", this->numConnectRetriesDone * timeout, this->maxConnectRetries * timeout);
+        this->numConnectRetriesDone++;
+      } else {
+        Serial.println("\nWiFi Connected!");
+        this->numConnectRetriesDone = 0;
               
-              if (!onImprovConnectedCallbacks.empty()) {
-                for (auto &cb : onImprovConnectedCallbacks) {
-                  cb(this->SSID.c_str(), this->PASSWORD.c_str());
-                }
-              }
-
-              return true;
-            }
-          
-        } else {
-          Serial.println(F("Failed to connect WiFi."));
-          this->connectFailure = true;
-
-          if (!onImprovErrorCallbacks.empty()) {
-            for (auto &cb : onImprovErrorCallbacks) {
-              cb(ImprovTypes::ERROR_UNABLE_TO_CONNECT);
-            }
+        if (!onImprovConnectedCallbacks.empty()) {
+          for (auto &cb : onImprovConnectedCallbacks) {
+            cb(this->SSID.c_str(), this->PASSWORD.c_str());
           }
+        }
 
-          return false;
-        }   
-      }  
+        return true;
+      }    
+    } else {
+      Serial.println(F("Failed to connect WiFi."));
+      this->connectFailure = true;
+
+      if (!onImprovErrorCallbacks.empty()) {
+        for (auto &cb : onImprovErrorCallbacks) {
+          cb(ImprovTypes::ERROR_UNABLE_TO_CONNECT);
+        }
+      }
+
+      return false;
+    }    
   }
   return false;
 }
