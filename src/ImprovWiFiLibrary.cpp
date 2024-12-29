@@ -252,7 +252,19 @@ bool ImprovWiFi::ConnectToWifi() {
       }
     } else {
       if (!this->loadWiFiCredentials(this->SSID, this->PASSWORD)) {
-        return false;
+
+        #if defined(WIFISSID) && defined(WIFIPASSWORD)
+          std::string ssid = WIFISSID;
+          std::string password = WIFIPASSWORD;
+          this->saveWiFiCredentials(&ssid, &password);
+          this->SSID = WIFISSID;
+          this->PASSWORD = WIFIPASSWORD;
+          
+          Serial.println("WiFi credentials saved and loaded from predefined parameters");
+          return true;
+        #else
+          return false;
+        #endif
       }
     }
   }
@@ -610,25 +622,19 @@ bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
 }
 
 bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
-  #if defined(WIFISSID) && defined(WIFIPASSWORD)
-    ssid = WIFISSID;
-    password = WIFIPASSWORD;
-    Serial.println("WiFi credentials loaded from predefined parameters, storing new credentials to NVS takes no effect.");
-    return true;
-  #else
-    if (preferences.begin("wifi", true)) {
+  if (preferences.begin("wifi", true)) {
       ssid = preferences.getString("ssid", "");
       password = preferences.getString("password", "");
       preferences.end();
       Serial.println("WiFi credentials loaded from NVS");
       this->WifiCredentialsAvailable = true;
       return true;
-    } else {
+  } else {
       Serial.println("Failed to open NVS");
       this->WifiCredentialsAvailable = false;
       return false;
-    }
-  #endif
+  }
+
 }
 
 #else
@@ -661,12 +667,6 @@ bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
 }
 
 bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
-  #if defined(WIFISSID) && defined(WIFIPASSWORD)
-    ssid = WIFISSID;
-    password = WIFIPASSWORD;
-    Serial.println("WiFi credentials loaded from predefined parameters, storing new credentials to EEPROM takes no effect.");
-    return true;
-  #else
     char myssid[WIFI_SSID_LENGTH];
     char mypassword[WIFI_PASSWORD_LENGTH];
     bool result = false;
@@ -699,6 +699,5 @@ bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
     }
     
     return result;
-  #endif
 }
 #endif
