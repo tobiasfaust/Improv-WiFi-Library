@@ -29,3 +29,5 @@ jobs:
             - name: Compile Examples
               run: |
                     pio ci --lib="." --board=${{ matrix.example.board }} ${{ matrix.example.path }}
+                    
+#                   pio ci --lib="." --board=${{ matrix.example.board }} -O lib_deps=https://github.com/mathieucarbou/ESPAsyncWebServer ${{ matrix.example.path }}

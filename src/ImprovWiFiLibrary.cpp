@@ -357,36 +357,37 @@ void ImprovWiFi::getAvailableWifiNetworks()
       
       // Sort RSSI - strongest first
       for (uint16_t i = 0; i < networkNum; i++) { indices[i] = i; }
+
       for (uint16_t i = 0; i < networkNum; i++) {
-          for (uint16_t j = i + 1; j < networkNum; j++) {
-	      if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])) {
-		  std::swap(indices[i], indices[j]);
-	      }
-          }
+        for (uint16_t j = i + 1; j < networkNum; j++) {
+	        if (WiFi.RSSI(indices[j]) > WiFi.RSSI(indices[i])) {
+		        std::swap(indices[i], indices[j]);
+	        }
+        }
       }
       
       // Remove duplicate SSIDs - IMPROV does not distinguish between channels so no need to keep them
       for (uint16_t i = 0; i < networkNum; i++) {
-          if (-1 == indices[i]) { continue; }
-          String cssid = WiFi.SSID(indices[i]);
-          for (uint16_t j = i + 1; j < networkNum; j++) {
-	      if (cssid == WiFi.SSID(indices[j])) {
-		  indices[j] = -1; // Set dup aps to index -1
-	      }
-          }
+        if (-1 == indices[i]) { continue; }
+        String cssid = WiFi.SSID(indices[i]);
+        for (uint16_t j = i + 1; j < networkNum; j++) {
+	        if (cssid == WiFi.SSID(indices[j])) {
+		        indices[j] = -1; // Set dup aps to index -1
+	        }
+        }
       }
       
   
       // Send networks
       for (uint16_t i = 0; i < networkNum; i++) {
-          if (-1 == indices[i]) { continue; }                  // Skip dups
-          String ssid_copy = WiFi.SSID(indices[i]);
-          if (!ssid_copy.length()) { ssid_copy = F("no_name"); }
+        if (-1 == indices[i]) { continue; }                  // Skip dups
+        String ssid_copy = WiFi.SSID(indices[i]);
+        if (!ssid_copy.length()) { ssid_copy = F("no_name"); }
 
-	  std::vector<std::string> wifinetworks = { ssid_copy.c_str(), std::to_string(WiFi.RSSI(indices[i])), ( WiFi.encryptionType(indices[i]) == WIFI_OPEN ? "NO" : "YES") };
-	  std::vector<uint8_t> data = build_rpc_response( ImprovTypes::GET_WIFI_NETWORKS, wifinetworks, false);
-	  sendResponse(data);
-	  delay(1);
+        std::vector<std::string> wifinetworks = { ssid_copy.c_str(), std::to_string(WiFi.RSSI(indices[i])), ( WiFi.encryptionType(indices[i]) == WIFI_OPEN ? "NO" : "YES") };
+        std::vector<uint8_t> data = build_rpc_response( ImprovTypes::GET_WIFI_NETWORKS, wifinetworks, false);
+        sendResponse(data);
+        delay(1);
       }
   }
 
@@ -609,20 +610,29 @@ bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
 }
 
 bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
-  if (preferences.begin("wifi", true)) {
-    ssid = preferences.getString("ssid", "");
-    password = preferences.getString("password", "");
-    preferences.end();
-    Serial.println("WiFi credentials loaded from NVS");
-    this->WifiCredentialsAvailable = true;
+  #if defined(WIFISSID) && defined(WIFIPASSWORD)
+    ssid = WIFISSID;
+    password = WIFIPASSWORD;
+    Serial.println("WiFi credentials loaded from predefined parameters, storing new credentials to NVS takes no effect.");
     return true;
-  } else {
-    Serial.println("Failed to open NVS");
-    this->WifiCredentialsAvailable = false;
-    return false;
-  }
+  #else
+    if (preferences.begin("wifi", true)) {
+      ssid = preferences.getString("ssid", "");
+      password = preferences.getString("password", "");
+      preferences.end();
+      Serial.println("WiFi credentials loaded from NVS");
+      this->WifiCredentialsAvailable = true;
+      return true;
+    } else {
+      Serial.println("Failed to open NVS");
+      this->WifiCredentialsAvailable = false;
+      return false;
+    }
+  #endif
 }
+
 #else
+
 bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
   EEPROM.begin(WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH);
   
@@ -651,37 +661,44 @@ bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
 }
 
 bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
-  char myssid[WIFI_SSID_LENGTH];
-  char mypassword[WIFI_PASSWORD_LENGTH];
-  bool result = false;
-  
-  // Inline-Funktion zur Überprüfung der Gültigkeit von Credentials
-  auto isValidCredential = [](const char* credential, size_t length) -> bool {
-    for (size_t i = 0; i < length; i++) {
-      if (credential[i] != 0xFF) {
-        return true;
+  #if defined(WIFISSID) && defined(WIFIPASSWORD)
+    ssid = WIFISSID;
+    password = WIFIPASSWORD;
+    Serial.println("WiFi credentials loaded from predefined parameters, storing new credentials to EEPROM takes no effect.");
+    return true;
+  #else
+    char myssid[WIFI_SSID_LENGTH];
+    char mypassword[WIFI_PASSWORD_LENGTH];
+    bool result = false;
+    
+    // Inline-Funktion zur Überprüfung der Gültigkeit von Credentials
+    auto isValidCredential = [](const char* credential, size_t length) -> bool {
+      for (size_t i = 0; i < length; i++) {
+        if (credential[i] != 0xFF) {
+          return true;
+        }
       }
+      return false;
+    };
+
+    EEPROM.begin(WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH);
+    EEPROM.get(0, myssid);
+    EEPROM.get(32, mypassword);
+    EEPROM.end();
+
+    if (isValidCredential(myssid, WIFI_SSID_LENGTH) && isValidCredential(mypassword, WIFI_PASSWORD_LENGTH)) {
+      Serial.println("WiFi credentials loaded from EEPROM successfully.");
+      //Serial.printf("SSID: %s, Password: %s\n", myssid, mypassword);
+      ssid = String(myssid);
+      password = String(mypassword);
+
+      result = true;
+    } else {
+      Serial.println("No WiFi credentials on EEPROM found.");
+      result = false;
     }
-    return false;
-  };
-
-  EEPROM.begin(WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH);
-  EEPROM.get(0, myssid);
-  EEPROM.get(32, mypassword);
-  EEPROM.end();
-
-  if (isValidCredential(myssid, WIFI_SSID_LENGTH) && isValidCredential(mypassword, WIFI_PASSWORD_LENGTH)) {
-    Serial.println("WiFi credentials loaded from EEPROM successfully.");
-    //Serial.printf("SSID: %s, Password: %s\n", myssid, mypassword);
-    ssid = String(myssid);
-    password = String(mypassword);
-
-    result = true;
-  } else {
-    Serial.println("No WiFi credentials on EEPROM found.");
-    result = false;
-  }
-  
-  return result;
+    
+    return result;
+  #endif
 }
 #endif
