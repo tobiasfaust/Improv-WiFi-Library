@@ -622,7 +622,7 @@ bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
 }
 
 bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
-  if (preferences.begin("wifi", true) && preferences.getBytesLength("ssid") > 0 && preferences.getBytesLength("password") > 0) {
+  if (preferences.begin("wifi", true)) {
       ssid = preferences.getString("ssid", "");
       password = preferences.getString("password", "");
       preferences.end();
