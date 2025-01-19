@@ -224,12 +224,4 @@ public:
    */
   bool isConnected();
 
-  /**
-   * @brief     Delete the saved WiFi credentials
-   * 
-   * @return
-   *   - bool  true if the credentials were deleted successfully
-   */
-  bool deleteWiFiCredentials();
-
 };

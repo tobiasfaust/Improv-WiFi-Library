@@ -630,23 +630,12 @@ bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
       this->WifiCredentialsAvailable = true;
       return true;
   } else {
-      Serial.println("WiFi credentials not found in NVS");
+      Serial.println("no WiFi credentials found in NVS");
       this->WifiCredentialsAvailable = false;
       return false;
   }
 }
 
-bool ImprovWiFi::deleteWiFiCredentials() {
-  if (preferences.begin("wifi", false)) {
-    preferences.clear();
-    preferences.end();
-    Serial.println("WiFi credentials deleted from NVS");
-    this->WifiCredentialsAvailable = false;
-    return true;
-  } else {
-    return false;
-  }
-}
 #else
 
 bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
