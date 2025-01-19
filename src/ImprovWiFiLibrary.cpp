@@ -630,7 +630,7 @@ bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
       this->WifiCredentialsAvailable = true;
       return true;
   } else {
-      Serial.println("Failed to open NVS");
+      Serial.println("WiFi credentials not found in NVS");
       this->WifiCredentialsAvailable = false;
       return false;
   }
