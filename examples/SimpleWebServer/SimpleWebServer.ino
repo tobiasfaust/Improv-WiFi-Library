@@ -74,6 +74,8 @@ void setup()
   //improvSerial.setCustomWiFiCredentialSaving(saveWifiCredentials); // Optional
   //improvSerial.setCustomWiFiCredentialLoading(loadWifiCredentials); // Optional
   improvSerial.ConnectToWifi();
+  
+  improvSerial.deleteWiFiCredentials(); // Optional
 
   blink_led(100, 5);
 }

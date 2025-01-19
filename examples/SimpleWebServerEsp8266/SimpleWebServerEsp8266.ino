@@ -60,6 +60,8 @@ void setup()
   improvSerial.onImprovConnected(onImprovWiFiConnectedCb);
   improvSerial.setCustomConnectWiFi(connectWifi);  // Optional
 
+  improvSerial.deleteWiFiCredentials(); // Optional
+
   blink_led(100, 5);
 }
 

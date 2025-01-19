@@ -634,9 +634,19 @@ bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
       this->WifiCredentialsAvailable = false;
       return false;
   }
-
 }
 
+bool ImprovWiFi::deleteWiFiCredentials() {
+  if (preferences.begin("wifi", false)) {
+    preferences.clear();
+    preferences.end();
+    Serial.println("WiFi credentials deleted from NVS");
+    this->WifiCredentialsAvailable = false;
+    return true;
+  } else {
+    return false;
+  }
+}
 #else
 
 bool ImprovWiFi::saveWiFiCredentials(std::string* ssid, std::string* password) {
@@ -697,7 +707,21 @@ bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
       Serial.println("No WiFi credentials on EEPROM found.");
       result = false;
     }
-    
     return result;
+}
+
+bool ImprovWiFi::deleteWiFiCredentials() {
+  EEPROM.begin(WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH);
+  
+  // make sure the EEPROM is clean
+  for (size_t i = 0; i < WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH ; i++) {
+    EEPROM.write(i, 0xFF);
+  }
+  
+  EEPROM.commit();
+  EEPROM.end(); 
+
+  Serial.println("WiFi credentials deleted from EEPROM successfully.");
+  return true;
 }
 #endif
