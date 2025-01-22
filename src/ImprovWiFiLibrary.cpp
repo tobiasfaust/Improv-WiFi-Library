@@ -699,18 +699,4 @@ bool ImprovWiFi::loadWiFiCredentials(String &ssid, String &password) {
     return result;
 }
 
-bool ImprovWiFi::deleteWiFiCredentials() {
-  EEPROM.begin(WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH);
-  
-  // make sure the EEPROM is clean
-  for (size_t i = 0; i < WIFI_SSID_LENGTH + WIFI_PASSWORD_LENGTH ; i++) {
-    EEPROM.write(i, 0xFF);
-  }
-  
-  EEPROM.commit();
-  EEPROM.end(); 
-
-  Serial.println("WiFi credentials deleted from EEPROM successfully.");
-  return true;
-}
 #endif
