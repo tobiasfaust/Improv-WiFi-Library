@@ -1,0 +1,41 @@
+{
+    "name": "Improv WiFi Library - Extended",
+    "version": "0.1.0",
+    "authors": [
+        "Jonathas Barbosa",
+        "Tobias Faust"
+    ],
+    "maintainers": [
+        "Jonathas Barbosa <jnthas@gmail.com>",
+        "Tobias Faust <tobias.faust@example.com>"
+    ],
+    "sentence": "The library implements the Improv WiFi protocol and complete Wifi connection handling allowing users to use this feature in their projects without effort.",
+    "paragraph": "Improv is a free and open standard that offer a great user experience to configure Wi-Fi on devices. This library implements the Improv WiFi protocol and complete wifi connection handling allowing users to use this feature in their projects without effort.",
+    "category": "Communication",
+    "url": "https://github.com/tobiasfaust/Improv-WiFi-Library",
+    "architectures": [
+      "esp32",
+      "esp32-c3",
+      "esp32-s2",
+      "esp32-s3",
+      "esp8266"
+    ],
+    "dependencies": [
+      {
+        "name": "ESP8266WiFi",
+        "platforms": "espressif8266"
+      },
+      {
+        "name": "EEPROM",
+        "platforms": "espressif8266"
+      },
+      {
+        "name": "Preferences",
+        "platforms": "espressif32"
+      },
+      {
+        "name": "WiFi",
+        "platforms": "espressif32"
+      }
+    ]
+  }
