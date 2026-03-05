@@ -4,7 +4,7 @@ ImprovWiFi::ImprovWiFi(Stream *serial):
   _stopme(millis() + IMPROV_RUN_FOR),
   serial(serial),
   connectFailure(false),
-  maxConnectRetries(120),
+  maxConnectRetries(30),
   numConnectRetriesDone(0),
   millisLastConnectTry(0),
   lastConnectStatus(false)
@@ -66,7 +66,7 @@ void ImprovWiFi::loop() {
           cb(ImprovTypes::ERROR_WIFI_CONNECT_GIVEUP);
         }
       }
-      //ESP.restart();
+      ESP.restart();
     } else {
       this->ConnectToWifi();  
     }
@@ -274,24 +274,33 @@ bool ImprovWiFi::ConnectToWifi() {
     return false;
   }
 
-  unsigned long currentMillis = millis();
+  this->millisLastConnectTry = 0;
 
   while (WiFi.status() != WL_CONNECTED) {
+    unsigned long currentMillis = millis();
     this->checkSerial();
-
-    this->millisLastConnectTry = currentMillis; 
-    Serial.println(F("Try to connect..."));
-
+       
     if(this->numConnectRetriesDone == 0) {
       Serial.printf("Starting Wifi connection to %s\n", this->SSID.c_str());
       WiFi.disconnect(true);
       if (WiFi.getMode() != WIFI_STA) WiFi.mode(WIFI_STA);
-    } 
-        
-    if (this->numConnectRetriesDone < this->maxConnectRetries) {
+    }
+    
+    if(this->numConnectRetriesDone > 0 && 
+      this->numConnectRetriesDone < this->maxConnectRetries && 
+      currentMillis - this->millisLastConnectTry < 30000) {
+      // try to connect to wifi every 30seconds until max retries are reached
+      continue;
+    }
 
-      WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str());
-            
+    if (this->numConnectRetriesDone < this->maxConnectRetries) {
+      this->millisLastConnectTry = currentMillis;
+
+      if (!this->WifiDeviceIsLocked) {
+        Serial.println(F("Try to connect..."));
+        WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str());
+      }
+
       // wifi connect needs some time, wait 5 seconds
       uint16_t timeout=5000;
       uint32_t start = millis();
@@ -301,8 +310,9 @@ bool ImprovWiFi::ConnectToWifi() {
       }
 
       if (WiFi.status() != WL_CONNECTED) {
-        Serial.printf("Waiting %d/%dsec\n", this->numConnectRetriesDone * timeout, this->maxConnectRetries * timeout);
         this->numConnectRetriesDone++;
+        Serial.printf("Waiting %dsec, try to connect %d/%d\n", (this->millisLastConnectTry + 30000 - millis()) / 1000, this->numConnectRetriesDone, this->maxConnectRetries);
+        WiFi.disconnect(false);
       } else {
         Serial.println("\nWiFi Connected!");
         this->numConnectRetriesDone = 0;
@@ -357,8 +367,16 @@ bool ImprovWiFi::tryConnectToWifi(const char *ssid, const char *password) {
   return true;
 }
 
-void ImprovWiFi::getAvailableWifiNetworks()
-{
+void ImprovWiFi::getAvailableWifiNetworks() {
+  // wait until wifi device is getting free
+  while(this->WifiDeviceIsLocked) {
+    this->checkSerial();
+    delay(100);
+  }
+
+  // lock wifi device to avoid multiple calls of starting wifi connection in the same time (reconnect vs. getAvailableNetworks)
+  this->WifiDeviceIsLocked = true;
+
   uint16_t networkNum = WiFi.scanNetworks(false, false); // Wait for scan result, hide hidden
 
   if (networkNum==0)
@@ -406,6 +424,9 @@ void ImprovWiFi::getAvailableWifiNetworks()
   // final response
   std::vector<uint8_t> data =  build_rpc_response(ImprovTypes::GET_WIFI_NETWORKS, std::vector<std::string>{}, false);
   sendResponse(data);
+
+  // unlock wifi device
+  this->WifiDeviceIsLocked = false;
 }
 
 inline void ImprovWiFi::replaceAll(std::string &str, const std::string &from, const std::string &to)

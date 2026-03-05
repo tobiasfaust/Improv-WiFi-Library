@@ -53,6 +53,7 @@ private:
   uint32_t  millisLastConnectTry;
   bool      lastConnectStatus;
   bool      WifiCredentialsAvailable = false;
+  bool      WifiDeviceIsLocked = false; // to avoid multiple calls of starting wifi connection in the same time (reconnect vs. getAvailableNetworks)
 
   void sendDeviceUrl(ImprovTypes::Command cmd);
   bool onCommandCallback(ImprovTypes::ImprovCommand cmd);
