@@ -48,8 +48,8 @@ private:
   Stream *serial;
 
   bool      connectFailure;
-  uint16_t  maxConnectRetries;
-  uint16_t  numConnectRetriesDone;
+  uint8_t  maxConnectRetries;
+  uint8_t  numConnectRetriesDone;
   uint32_t  millisLastConnectTry;
   bool      lastConnectStatus;
   bool      WifiCredentialsAvailable = false;
