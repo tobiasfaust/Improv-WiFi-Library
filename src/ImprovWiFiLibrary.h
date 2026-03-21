@@ -54,6 +54,7 @@ private:
   bool      lastConnectStatus;
   bool      WifiCredentialsAvailable = false;
   bool      WifiDeviceIsLocked = false; // to avoid multiple calls of starting wifi connection in the same time (reconnect vs. getAvailableNetworks)
+  uint8_t   BSSID[6] = {0};
 
   void sendDeviceUrl(ImprovTypes::Command cmd);
   bool onCommandCallback(ImprovTypes::ImprovCommand cmd);
@@ -224,5 +225,11 @@ public:
    * @brief if connection is established using `WiFi.status() == WL_CONNECTED`
    */
   bool isConnected();
+
+  /**
+   * @brief     set a specific Accesspoint MAC address for binding WLAN Connection this this AP
+   * @param     mac  uint8_t[] of MAC address of the Accesspoint
+   */
+  void setBSSID(const uint8_t mac[6]);
 
 };

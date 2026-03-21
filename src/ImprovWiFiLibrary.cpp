@@ -243,6 +243,10 @@ void ImprovWiFi::sendDeviceUrl(ImprovTypes::Command cmd)
   sendResponse(data);
 }
 
+void ImprovWiFi::setBSSID(const uint8_t mac[6]) {
+  memcpy(this->BSSID, mac, 6);
+}
+
 bool ImprovWiFi::ConnectToWifi() {
   // try to load credentials from NVS or EEPROM
   if (this->SSID.isEmpty() || this->PASSWORD.isEmpty()) {
@@ -297,8 +301,16 @@ bool ImprovWiFi::ConnectToWifi() {
       this->millisLastConnectTry = currentMillis;
 
       if (!this->WifiDeviceIsLocked) {
-        Serial.println(F("Try to connect..."));
-        WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str());
+        if (!(this->BSSID[0] == 0 && this->BSSID[1] == 0 && this->BSSID[2] == 0 && 
+          this->BSSID[3] == 0 && this->BSSID[4] == 0 && this->BSSID[5] == 0) &&
+          this->numConnectRetriesDone < (uint16_t)(this->maxConnectRetries/3)) {
+          // if BSSID is set and we are in the first third of max retries, try to connect with BSSID to avoid connecting to any AP with same SSID
+          Serial.printf("Try connect to AP with BSSID %02X:%02X:%02X:%02X:%02X:%02X\n", this->BSSID[0], this->BSSID[1], this->BSSID[2], this->BSSID[3], this->BSSID[4], this->BSSID[5]);
+          WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str(), 0, this->BSSID);
+        } else {
+          Serial.println(F("Try to connect..."));
+          WiFi.begin(this->SSID.c_str(), this->PASSWORD.c_str());
+        }
       }
 
       // wifi connect needs some time, wait 5 seconds
