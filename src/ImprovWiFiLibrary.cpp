@@ -323,7 +323,7 @@ bool ImprovWiFi::ConnectToWifi() {
 
       if (WiFi.status() != WL_CONNECTED) {
         this->numConnectRetriesDone++;
-        Serial.printf("Waiting %dsec, try to connect %d/%d\n", (this->millisLastConnectTry + 30000 - millis()) / 1000, this->numConnectRetriesDone, this->maxConnectRetries);
+        Serial.printf("Waiting %dsec, try to connect %u/%u\n", (this->millisLastConnectTry + 30000 - millis()) / 1000, this->numConnectRetriesDone, this->maxConnectRetries);
         WiFi.disconnect(false);
       } else {
         Serial.println("\nWiFi Connected!");
